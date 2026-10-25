@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/FeedSentinel/">
+    <Project Path="FeedSentinel/FeedSentinel.Worker.csproj" />
+  </Folder>
+    
+</Solution>
