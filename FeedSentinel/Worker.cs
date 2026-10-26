@@ -1,16 +1,22 @@
+
+using FeedSentinel.Worker.Models;
+using Microsoft.Extensions.Options;
+
 namespace FeedSentinel.Worker;
-
-public class Worker(ILogger<Worker> logger, IHttpClientFactory httpClient) : BackgroundService
+public class Worker(
+    ILogger<Worker> logger,
+    IHttpClientFactory httpClient,
+    IOptions<WatcherOptions> options) : BackgroundService
 {
-    private readonly TimeSpan _interval = TimeSpan.FromSeconds(5);
-    private const string Url = "https://jsonplaceholder.typicode.com/posts";
-    private readonly string _outputPath = Path.Combine(Directory.GetCurrentDirectory(), "temp");
-
+    private readonly TimeSpan _interval = options.Value.Interval;
+    private readonly string Url = options.Value.Source;
+    private readonly string _outputPath = options.Value.OutputPath;
+    
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation("Sentinel started at: {time}", DateTimeOffset.Now);
 
-        Directory.CreateDirectory(_outputPath); // não faz nada se já existir
+        Directory.CreateDirectory(_outputPath);
 
         using var timer = new PeriodicTimer(_interval);
 
