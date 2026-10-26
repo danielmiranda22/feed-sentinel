@@ -1,17 +1,18 @@
 
-using FeedSentinel.Worker.Models;
+using FeedSentinel.Worker.Config;
 using Microsoft.Extensions.Options;
 
 namespace FeedSentinel.Worker;
+
 public class Worker(
     ILogger<Worker> logger,
-    IHttpClientFactory httpClient,
+    IHttpClientFactory httpClientFactory,
     IOptions<WatcherOptions> options) : BackgroundService
 {
     private readonly TimeSpan _interval = options.Value.Interval;
-    private readonly string Url = options.Value.Source;
+    private readonly Uri _url = options.Value.Source!;
     private readonly string _outputPath = options.Value.OutputPath;
-    
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation("Sentinel started at: {time}", DateTimeOffset.Now);
@@ -20,15 +21,19 @@ public class Worker(
 
         using var timer = new PeriodicTimer(_interval);
 
-        do
-        {
-            logger.LogInformation("Requesting data: {time}", DateTimeOffset.Now);
+        do {
+            try {
+                logger.LogInformation("Requesting data: {time}", DateTimeOffset.Now);
 
-            var client = httpClient.CreateClient();
-            var resp = await client.GetAsync(Url, stoppingToken);
-            var data = await resp.Content.ReadAsStringAsync(stoppingToken);
+                var client = httpClientFactory.CreateClient();
+                var resp = await client.GetAsync(_url, stoppingToken);
+                var data = await resp.Content.ReadAsStringAsync(stoppingToken);
 
-            await SaveDataAsync(data, stoppingToken);
+                await SaveDataAsync(data, stoppingToken);
+
+            } catch (Exception ex) when (!stoppingToken.IsCancellationRequested) {
+                logger.LogError(ex, "Error occurred while fetching data");
+            }
         }
         while (await timer.WaitForNextTickAsync(stoppingToken));
     }

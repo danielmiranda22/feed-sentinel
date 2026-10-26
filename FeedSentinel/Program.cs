@@ -1,5 +1,5 @@
 using FeedSentinel.Worker;
-using FeedSentinel.Worker.Models;
+using FeedSentinel.Worker.Config;
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services
