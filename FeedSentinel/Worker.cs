@@ -1,4 +1,3 @@
-
 using FeedSentinel.Worker.Config;
 using Microsoft.Extensions.Options;
 
@@ -15,7 +14,7 @@ public class Worker(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        logger.LogInformation("Sentinel started at: {time}", DateTimeOffset.Now);
+        logger.SentinelStarted(_url, _interval);
 
         Directory.CreateDirectory(_outputPath);
 
@@ -23,16 +22,16 @@ public class Worker(
 
         do {
             try {
-                logger.LogInformation("Requesting data: {time}", DateTimeOffset.Now);
+                logger.RequestingData(_url);
 
                 var client = httpClientFactory.CreateClient();
-                var resp = await client.GetAsync(_url, stoppingToken);
+                using var resp = await client.GetAsync(_url, stoppingToken);
+                resp.EnsureSuccessStatusCode();
+
                 var data = await resp.Content.ReadAsStringAsync(stoppingToken);
-
                 await SaveDataAsync(data, stoppingToken);
-
             } catch (Exception ex) when (!stoppingToken.IsCancellationRequested) {
-                logger.LogError(ex, "Error occurred while fetching data");
+                logger.FetchFailed(_url, ex);
             }
         }
         while (await timer.WaitForNextTickAsync(stoppingToken));
@@ -44,6 +43,6 @@ public class Worker(
         var filePath = Path.Combine(_outputPath, fileName);
 
         await File.WriteAllTextAsync(filePath, data, ct);
-        logger.LogInformation("Saved {Length} chars to {FilePath}", data.Length, filePath);
+        logger.DataSaved(data.Length, filePath);
     }
 }
