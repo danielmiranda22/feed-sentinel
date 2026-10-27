@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Options;
 using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
 
 namespace FeedSentinel.Worker.Config;
 
@@ -18,7 +19,7 @@ public class WatcherOptions
     public List<WatcherSource>? Sources { get; set; }
 }
 
-public class WatcherSource : IValidatableObject
+public partial class WatcherSource : IValidatableObject
 {
     [Required]
     public Uri? Url { get; set; }
@@ -40,11 +41,22 @@ public class WatcherSource : IValidatableObject
         var isHttps = Url.Scheme == Uri.UriSchemeHttps;
         var isAllowedHttp = Url.Scheme == Uri.UriSchemeHttp && AllowInsecureHttp;
 
-        if(!isHttps && !isAllowedHttp)
-        {
+        if (!isHttps && !isAllowedHttp) {
             yield return new ValidationResult(
-               $"Source '{Name}' must use https (or set AllowInsecureHttp for http).",
-               [nameof(Url)]);
+               $"Source '{Name}' must use https (or set AllowInsecureHttp for http).", [nameof(Url)]
+               );
         }
+
+        Regex regex = AllowedListRegex();
+        Match match = regex.Match(Name);
+        if (!match.Success) {
+            yield return new ValidationResult(
+                $"Source '{Name}' contains invalid characters. Only letters, numbers, spaces, underscores, and hyphens are allowed.", [nameof(Name)]
+            );
+        }
+
     }
+
+    [GeneratedRegex(@"^[A-Za-z0-9 _-]+$")]
+    private static partial Regex AllowedListRegex();
 }
