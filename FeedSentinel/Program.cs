@@ -6,11 +6,13 @@ var builder = Host.CreateApplicationBuilder(args);
 builder.Services
     .AddOptionsWithValidateOnStart<WatcherOptions>()
     .Bind(builder.Configuration.GetSection(WatcherOptions.SectionName))
-    .ValidateDataAnnotations()
-    .Validate(o => o.Source is null || o.Source.Scheme == Uri.UriSchemeHttps,
-        "Watcher:Source must use https.");
-builder.Services.AddHostedService<Worker>();
+    .ValidateDataAnnotations();
+builder.Services.AddHostedService<Watcher>();
 builder.Services.AddHttpClient();
+
+// DI
+builder.Services.AddTransient<IScraper, FeedFetcher>();
+builder.Services.AddTransient<IWriter, FeedWriter>();
 
 using var host = builder.Build();
 var logger = host.Services.GetRequiredService<ILogger<Program>>();

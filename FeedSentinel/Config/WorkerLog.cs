@@ -9,8 +9,8 @@ public static partial class WorkerLog
     public static partial void HostTerminated(this ILogger logger, Exception ex);
 
 
-    [LoggerMessage(EventId = 2001, Level = LogLevel.Information, Message = "Sentinel started, watching {Url} every {Interval}")]
-    public static partial void SentinelStarted(this ILogger logger, Uri url, TimeSpan interval);
+    [LoggerMessage(EventId = 2001, Level = LogLevel.Information, Message = "Sentinel started, watching {Sources} every {Interval}")]
+    public static partial void SentinelStarted(this ILogger logger, List<WatcherSource> sources, TimeSpan interval);
 
     [LoggerMessage(EventId = 2002, Level = LogLevel.Information, Message = "Requesting {Url}")]
     public static partial void RequestingData(this ILogger logger, Uri url);
