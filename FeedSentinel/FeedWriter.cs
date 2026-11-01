@@ -5,6 +5,11 @@ using System.Text.Json;
 
 namespace FeedSentinel.Worker;
 
+public interface IWriter
+{
+    Task SaveDataAsync(Feed feed, string name, CancellationToken ct);
+}
+
 public class FeedWriter : IWriter
 {
     private readonly ILogger<FeedWriter> _logger;
@@ -43,9 +48,4 @@ public class FeedWriter : IWriter
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
-}
-
-public interface IWriter
-{
-    Task SaveDataAsync(Feed feed, string name, CancellationToken ct);
 }

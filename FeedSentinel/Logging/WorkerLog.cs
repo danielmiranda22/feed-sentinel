@@ -23,4 +23,11 @@ public static partial class WorkerLog
 
     [LoggerMessage(EventId = 2005, Level = LogLevel.Warning, Message = "Source '{Name}' uses insecure HTTP: {Url}")]
     public static partial void InsecureSourceAllowed(this ILogger logger, string name, Uri url);
+
+
+    [LoggerMessage(EventId = 3001, Level = LogLevel.Information, Message = "Loaded state for {Count} sources from {Path}")]
+    public static partial void StateLoaded(this ILogger logger, int count, string path);
+
+    [LoggerMessage(EventId = 3003, Level = LogLevel.Warning, Message = "Source '{Name}' has {Count} new entries")]
+    public static partial void NewEntriesFound(this ILogger logger, string name, int count);
 }

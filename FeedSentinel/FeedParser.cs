@@ -3,6 +3,12 @@ using System.Xml;
 
 namespace FeedSentinel.Worker;
 
+public interface IParser
+{
+    Feed Parse(string data);
+}
+
+
 public class FeedParser : IParser
 {
     public Feed Parse(string data)
@@ -29,10 +35,3 @@ public class FeedParser : IParser
                 item.LastUpdatedTime)).ToList());
     }
 }
-
-public interface IParser
-{
-    Feed Parse(string data);
-}
-
-

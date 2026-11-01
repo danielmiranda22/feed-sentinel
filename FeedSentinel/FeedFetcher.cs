@@ -1,5 +1,10 @@
 ﻿namespace FeedSentinel.Worker;
 
+public interface IFeedFetcher
+{
+    Task<string> FetchAsync(Uri url, CancellationToken ct);
+}
+
 /// <summary>
 /// Downloads the raw content of a feed.
 /// </summary>
@@ -13,7 +18,3 @@ public class FeedFetcher(HttpClient httpClient) : IFeedFetcher
     }
 }
 
-public interface IFeedFetcher
-{
-    Task<string> FetchAsync(Uri url, CancellationToken ct);
-}

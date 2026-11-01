@@ -9,12 +9,13 @@ builder.Services
     .Bind(builder.Configuration.GetSection(WatcherOptions.SectionName))
     .ValidateDataAnnotations();
 builder.Services.AddHostedService<Watcher>();
-builder.Services.AddHttpClient();
 
 // DI
 builder.Services.AddHttpClient<IFeedFetcher, FeedFetcher>();
 builder.Services.AddTransient<IParser, FeedParser>();
 builder.Services.AddTransient<IWriter, FeedWriter>();
+// Singleton: holds the seen ids in memory for the whole lifetime of the service.
+builder.Services.AddSingleton<ISeenStore, JsonSeenStore>();
 
 using var host = builder.Build();
 var logger = host.Services.GetRequiredService<ILogger<Program>>();
@@ -24,7 +25,7 @@ try {
     await host.WaitForShutdownAsync();
     return 0;
 } catch (OptionsValidationException ex) {
-    logger.ConfigurationInvalid(string.Join("; ", ex.Failures));
+    logger.ConfigurationInvalid(failures: string.Join("; ", ex.Failures));
     return 1;
 } catch (Exception ex) {
     logger.HostTerminated(ex);

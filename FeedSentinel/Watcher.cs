@@ -9,6 +9,7 @@ public class Watcher(
     IOptions<WatcherOptions> options,
     IFeedFetcher fetcher,
     IParser parser,
+    ISeenStore seenStore,
     IWriter writer) : BackgroundService
 {
     private readonly TimeSpan _interval = options.Value.Interval;
@@ -27,17 +28,36 @@ public class Watcher(
         do {
             foreach (var source in _sources) {
                 try {
-                    logger.RequestingData(source.Url!);
-
-                    var data = await fetcher.FetchAsync(source.Url!, stoppingToken);
-                    var feed = parser.Parse(data);
-                    await writer.SaveDataAsync(feed, source.Name, stoppingToken);
-
+                    await CheckSourceAsync(source, stoppingToken);
                 } catch (Exception ex) when (!stoppingToken.IsCancellationRequested) {
                     logger.FetchFailed(source.Url!, ex);
                 }
             }
         }
         while (await timer.WaitForNextTickAsync(stoppingToken));
+    }
+
+    private async Task CheckSourceAsync(WatcherSource source, CancellationToken ct)
+    {
+        var url = source.Url!;
+        logger.RequestingData(url);
+
+        var data = await fetcher.FetchAsync(url, ct);
+        var feed = parser.Parse(data);
+        var currentIds = feed.Items.Select(i => i.Id).ToHashSet();
+
+        // An empty feed is suspicious (outage, bad response): keep the old state
+        if (currentIds.Count == 0)
+            return;
+
+        var seen = seenStore.GetSeen(url);
+        var newItems = feed.Items.Where(i => !seen.Contains(i.Id)).ToList();
+
+        if (newItems.Count > 0) {
+            await writer.SaveDataAsync(feed with { Items = newItems }, source.Name, ct);
+            logger.NewEntriesFound(source.Name, newItems.Count);
+        }
+
+        await seenStore.SetSeenAsync(url, currentIds, ct);
     }
 }

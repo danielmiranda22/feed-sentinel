@@ -13,4 +13,9 @@
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.14" />
     <PackageReference Include="System.ServiceModel.Syndication" Version="10.0.14" />
   </ItemGroup>
+	
+	<ItemGroup>
+		<!-- Runtime output (feeds + state.json): never copy to bin or publish. -->
+		<Content Remove="data\**" />
+	</ItemGroup>
 </Project>
