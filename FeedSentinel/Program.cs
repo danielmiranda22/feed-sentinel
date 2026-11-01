@@ -13,6 +13,7 @@ builder.Services.AddHttpClient();
 // DI
 builder.Services.AddTransient<IScraper, FeedFetcher>();
 builder.Services.AddTransient<IWriter, FeedWriter>();
+builder.Services.AddTransient<IParser, FeedParser>();
 
 using var host = builder.Build();
 var logger = host.Services.GetRequiredService<ILogger<Program>>();

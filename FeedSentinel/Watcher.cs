@@ -7,7 +7,8 @@ public class Watcher(
     ILogger<Watcher> logger,
     IOptions<WatcherOptions> options,
     IScraper scraper,
-    IWriter writer) : BackgroundService
+    IWriter writer,
+    IParser parser) : BackgroundService
 {
     private readonly TimeSpan _interval = options.Value.Interval;
     private readonly List<WatcherSource> _sources = options.Value.Sources ?? [];
@@ -24,7 +25,8 @@ public class Watcher(
                     logger.RequestingData(source.Url!);
 
                     var data = await scraper.ScrapeDataAsync(source.Url!, stoppingToken);
-                    await writer.SaveDataAsync(data, source.Name, stoppingToken);
+                    var parsedData = parser.Parse(data, stoppingToken);
+                    await writer.SaveDataAsync(parsedData, source.Name, stoppingToken);
 
                 } catch (Exception ex) when (!stoppingToken.IsCancellationRequested) {
                     logger.FetchFailed(source.Url!, ex);

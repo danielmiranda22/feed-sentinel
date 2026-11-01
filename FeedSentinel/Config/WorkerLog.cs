@@ -15,8 +15,8 @@ public static partial class WorkerLog
     [LoggerMessage(EventId = 2002, Level = LogLevel.Information, Message = "Requesting {Url}")]
     public static partial void RequestingData(this ILogger logger, Uri url);
 
-    [LoggerMessage(EventId = 2003, Level = LogLevel.Information, Message = "Saved {Length} chars to {FilePath}")]
-    public static partial void DataSaved(this ILogger logger, int length, string filePath);
+    [LoggerMessage(EventId = 2003, Level = LogLevel.Information, Message = "Saved {Count} chars to {FilePath}")]
+    public static partial void DataSaved(this ILogger logger, int count, string filePath);
 
     [LoggerMessage(EventId = 2004, Level = LogLevel.Error, Message = "Failed to fetch {Url}")]
     public static partial void FetchFailed(this ILogger logger, Uri url, Exception ex);
