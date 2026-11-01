@@ -1,20 +1,19 @@
 ﻿namespace FeedSentinel.Worker;
 
 /// <summary>
-/// Resposible for fetching the data to the correspondet endpoint
+/// Downloads the raw content of a feed.
 /// </summary>
-public class FeedFetcher(IHttpClientFactory httpClientFactory) : IScraper
+public class FeedFetcher(HttpClient httpClient) : IFeedFetcher
 {
-    public async Task<string> ScrapeDataAsync(Uri url, CancellationToken ct)
+    public async Task<string> FetchAsync(Uri url, CancellationToken ct)
     {
-        using var httpClient = httpClientFactory.CreateClient();
-        var response = await httpClient.GetAsync(url, ct);
+        using var response = await httpClient.GetAsync(url, ct);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadAsStringAsync(ct);
     }
 }
 
-public interface IScraper
+public interface IFeedFetcher
 {
-    Task<string> ScrapeDataAsync(Uri url, CancellationToken ct);
+    Task<string> FetchAsync(Uri url, CancellationToken ct);
 }

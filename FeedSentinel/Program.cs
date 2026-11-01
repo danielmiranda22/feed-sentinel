@@ -1,4 +1,5 @@
 using FeedSentinel.Worker;
+using FeedSentinel.Worker.Logging;
 using FeedSentinel.Worker.Config;
 using Microsoft.Extensions.Options;
 
@@ -11,9 +12,9 @@ builder.Services.AddHostedService<Watcher>();
 builder.Services.AddHttpClient();
 
 // DI
-builder.Services.AddTransient<IScraper, FeedFetcher>();
-builder.Services.AddTransient<IWriter, FeedWriter>();
+builder.Services.AddHttpClient<IFeedFetcher, FeedFetcher>();
 builder.Services.AddTransient<IParser, FeedParser>();
+builder.Services.AddTransient<IWriter, FeedWriter>();
 
 using var host = builder.Build();
 var logger = host.Services.GetRequiredService<ILogger<Program>>();

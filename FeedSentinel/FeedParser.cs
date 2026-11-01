@@ -5,7 +5,7 @@ namespace FeedSentinel.Worker;
 
 public class FeedParser : IParser
 {
-    public Feed Parse(string data, CancellationToken cancellationToken = default)
+    public Feed Parse(string data)
     {
         // Use XmlReaderSettings to prevent DTD (Document Type Definition) processing and disable external entity resolution for security.
         var settings = new XmlReaderSettings {
@@ -14,10 +14,11 @@ public class FeedParser : IParser
         };
         using var reader = XmlReader.Create(new StringReader(data), settings);
 
-        // Read the feed using Atom10FeedFormatter.
+        // Load detects Atom or RSS automatically.
         SyndicationFeed feed = SyndicationFeed.Load(reader);
 
         return new Feed(
+            feed.Id,
             feed.Title.Text,
             feed.Description?.Text ?? string.Empty,
             feed.Items.Select(item => new FeedItem(
@@ -31,7 +32,7 @@ public class FeedParser : IParser
 
 public interface IParser
 {
-    Feed Parse(string data, CancellationToken cancellationToken = default);
+    Feed Parse(string data);
 }
 
 

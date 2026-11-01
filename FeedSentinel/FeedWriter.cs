@@ -1,4 +1,5 @@
-﻿using FeedSentinel.Worker.Config;
+﻿using FeedSentinel.Worker.Logging;
+using FeedSentinel.Worker.Config;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 
