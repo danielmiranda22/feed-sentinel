@@ -11,7 +11,12 @@ builder.Services
 builder.Services.AddHostedService<Watcher>();
 
 // DI
-builder.Services.AddHttpClient<IFeedFetcher, FeedFetcher>();
+builder.Services.AddTransient<IFeedChecker, FeedChecker>();
+// The watcher lives for the whole process, so this client is never recycled by the factory.
+// Recycle connections ourselves so DNS changes are picked up.
+builder.Services.AddHttpClient<IFeedFetcher, FeedFetcher>()
+    .UseSocketsHttpHandler((handler, _) => handler.PooledConnectionLifetime = TimeSpan.FromMinutes(5))
+    .SetHandlerLifetime(Timeout.InfiniteTimeSpan); 
 builder.Services.AddTransient<IParser, FeedParser>();
 builder.Services.AddTransient<IWriter, FeedWriter>();
 // Singleton: holds the seen ids in memory for the whole lifetime of the service.

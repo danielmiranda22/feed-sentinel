@@ -22,8 +22,9 @@ public class FeedWriter : IWriter
         _logger = logger;
 
         _root = Path.GetFullPath(options.Value.OutputPath);
-        if (!Path.EndsInDirectorySeparator(_root))
+        if (!Path.EndsInDirectorySeparator(_root)) {
             _root += Path.DirectorySeparatorChar;
+        }
 
         // Create the folder once, not on every save.
         Directory.CreateDirectory(_root);
@@ -38,8 +39,9 @@ public class FeedWriter : IWriter
         var filePath = Path.GetFullPath(Path.Combine(_root, fileName));
 
         // names are validated at startup, but never write outside the output folder.
-        if (!filePath.StartsWith(_root, StringComparison.OrdinalIgnoreCase))
+        if (!filePath.StartsWith(_root, StringComparison.OrdinalIgnoreCase)) {
             throw new InvalidOperationException($"Refusing to write outside '{_root}': '{filePath}'.");
+        }
 
         await using var stream = File.Create(filePath);
         await JsonSerializer.SerializeAsync(stream, feed, JsonOptions, ct);

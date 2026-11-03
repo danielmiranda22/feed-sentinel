@@ -58,8 +58,9 @@ public sealed class JsonSeenStore : ISeenStore
 
     private static Dictionary<string, HashSet<string>> Load(string path)
     {
-        if (!File.Exists(path))
+        if (!File.Exists(path)) {
             return [];
+        }
 
         try {
             using var stream = File.OpenRead(path);

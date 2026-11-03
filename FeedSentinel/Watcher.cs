@@ -4,13 +4,17 @@ using Microsoft.Extensions.Options;
 
 namespace FeedSentinel.Worker;
 
+/// <summary>
+/// Responsible to schedule and run the feed checking process at a configured interval.
+/// </summary>
+/// <param name="logger"></param>
+/// <param name="options"></param>
+/// <param name="feedChecker"></param>
 public class Watcher(
     ILogger<Watcher> logger,
     IOptions<WatcherOptions> options,
-    IFeedFetcher fetcher,
-    IParser parser,
-    ISeenStore seenStore,
-    IWriter writer) : BackgroundService
+    IFeedChecker feedChecker
+) : BackgroundService
 {
     private readonly TimeSpan _interval = options.Value.Interval;
     private readonly List<WatcherSource> _sources = options.Value.Sources ?? [];
@@ -26,38 +30,8 @@ public class Watcher(
         using var timer = new PeriodicTimer(_interval);
 
         do {
-            foreach (var source in _sources) {
-                try {
-                    await CheckSourceAsync(source, stoppingToken);
-                } catch (Exception ex) when (!stoppingToken.IsCancellationRequested) {
-                    logger.FetchFailed(source.Url!, ex);
-                }
-            }
+            await feedChecker.CheckAllFeedsAsync(_sources, stoppingToken);
         }
         while (await timer.WaitForNextTickAsync(stoppingToken));
-    }
-
-    private async Task CheckSourceAsync(WatcherSource source, CancellationToken ct)
-    {
-        var url = source.Url!;
-        logger.RequestingData(url);
-
-        var data = await fetcher.FetchAsync(url, ct);
-        var feed = parser.Parse(data);
-        var currentIds = feed.Items.Select(i => i.Id).ToHashSet();
-
-        // An empty feed is suspicious (outage, bad response): keep the old state
-        if (currentIds.Count == 0)
-            return;
-
-        var seen = seenStore.GetSeen(url);
-        var newItems = feed.Items.Where(i => !seen.Contains(i.Id)).ToList();
-
-        if (newItems.Count > 0) {
-            await writer.SaveDataAsync(feed with { Items = newItems }, source.Name, ct);
-            logger.NewEntriesFound(source.Name, newItems.Count);
-        }
-
-        await seenStore.SetSeenAsync(url, currentIds, ct);
     }
 }
