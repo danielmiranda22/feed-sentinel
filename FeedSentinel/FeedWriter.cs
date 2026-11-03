@@ -13,13 +13,16 @@ public interface IWriter
 public class FeedWriter : IWriter
 {
     private readonly ILogger<FeedWriter> _logger;
+    private readonly TimeProvider _provider;
     private readonly string _root;
 
     public FeedWriter(
         IOptions<WatcherOptions> options,
-        ILogger<FeedWriter> logger)
+        ILogger<FeedWriter> logger,
+        TimeProvider provider)
     {
         _logger = logger;
+        _provider = provider;
 
         _root = Path.GetFullPath(options.Value.OutputPath);
         if (!Path.EndsInDirectorySeparator(_root)) {
@@ -32,7 +35,7 @@ public class FeedWriter : IWriter
 
     public async Task SaveDataAsync(Feed feed, string name, CancellationToken ct)
     {
-        var fileName = $"{name}-{DateTime.Now:yyyyMMdd-HHmmss}.json";
+        var fileName = $"{name}-{_provider.GetUtcNow():yyyyMMdd-HHmmss}.json";
 
         // GetFullPath resolves "..", mixed slashes and absolute paths,
         // compare where the file will really be written.

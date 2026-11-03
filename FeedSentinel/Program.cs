@@ -21,6 +21,7 @@ builder.Services.AddTransient<IParser, FeedParser>();
 builder.Services.AddTransient<IWriter, FeedWriter>();
 // Singleton: holds the seen ids in memory for the whole lifetime of the service.
 builder.Services.AddSingleton<ISeenStore, JsonSeenStore>();
+builder.Services.AddSingleton(TimeProvider.System);
 
 using var host = builder.Build();
 var logger = host.Services.GetRequiredService<ILogger<Program>>();

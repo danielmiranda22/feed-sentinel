@@ -19,12 +19,13 @@ dotnet run --project FeedSentinel
 |---|---|---|
 | `Watcher:Interval` | Time between checks (1s – 1 day) | `00:15:00` (`00:00:05` in Development) |
 | `Watcher:OutputPath` | Folder for saved releases and `state.json` | `data` |
+| `Watcher:MaxConcurrency` | Sources checked at the same time (1–16) | `4` |
 | `Watcher:Sources` | List of sources (at least one) | required |
 | `Sources[].Url` | Feed URL, e.g. `https://github.com/{owner}/{repo}/releases.atom` | required |
 | `Sources[].Name` | Letters, digits, space, `-`, `_` (used in file names) | required |
 | `Sources[].AllowInsecureHttp` | Allow `http://` for this source | `false` |
 
-Only **new** releases are saved, as `{Name}-{yyyyMMdd-HHmmss}.json`.
+Only **new** releases are saved, as `{Name}-{yyyyMMdd-HHmmss}.json` (UTC).
 Releases already seen are kept in `state.json`, so restarts don't repeat them.
 
 ## Design decisions
@@ -40,3 +41,27 @@ Releases already seen are kept in `state.json`, so restarts don't repeat them.
   non-2xx responses are logged per source; the next tick retries.
 - **State survives crashes.** `state.json` is written atomically (temp file +
   replace).
+- **Bounded concurrency.** Up to `MaxConcurrency` sources are checked at the
+  same time with `Parallel.ForEachAsync`; the state store is thread-safe.
+- **Testable time.** Timestamps come from an injected `TimeProvider`, not
+  `DateTime.Now`.
+
+## Measurements
+
+One check over N sources, each answering after a simulated 200 ms
+(`FeedSentinel.Benchmarks`, fake `HttpMessageHandler`, no real network):
+
+| Sources | MaxConcurrency | Sequential | Concurrent | Ratio |
+|---|---|---:|---:|---:|
+| 10 | 4 | 2,039 ms | 613 ms | 0.30 |
+| 10 | 8 | 2,044 ms | 405 ms | 0.20 |
+| 50 | 4 | 10,174 ms | 2,677 ms | 0.26 |
+| 50 | 8 | 10,177 ms | 1,424 ms | 0.14 |
+
+Allocations are the same in both cases. The work is I/O-bound, so a bounded
+`Parallel.ForEachAsync` is enough; Channels were not needed (no producers and
+consumers running at different speeds).
+
+```bash
+dotnet run -c Release --project FeedSentinel.Benchmarks -- --filter *CheckAllFeeds*
+```
