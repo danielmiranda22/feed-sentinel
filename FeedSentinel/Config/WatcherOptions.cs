@@ -17,6 +17,10 @@ public class WatcherOptions
 
     [Required, MinLength(1), ValidateEnumeratedItems]
     public List<WatcherSource>? Sources { get; set; }
+
+    // How many sources are checked at the same time. 1 = one after the other.
+    [Range(1, 16)]
+    public int MaxConcurrency { get; set; } = 4;
 }
 
 public partial class WatcherSource : IValidatableObject

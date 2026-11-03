@@ -1,25 +1,42 @@
 ﻿using FeedSentinel.Worker.Config;
 using FeedSentinel.Worker.Logging;
+using Microsoft.Extensions.Options;
 
 namespace FeedSentinel.Worker;
 
+public interface IFeedChecker
+{
+    Task CheckAllFeedsAsync(IReadOnlyList<WatcherSource> sources, CancellationToken ct);
+}
+
+/// <summary>
+/// Runs one check over all sources: fetch, parse, keep only new entries, save.
+/// Up to <see cref="WatcherOptions.MaxConcurrency"/> sources are checked at the same time.
+/// </summary>
 public class FeedChecker(
     ILogger<FeedChecker> logger,
+    IOptions<WatcherOptions> options,
     IFeedFetcher fetcher,
     IParser parser,
     ISeenStore seenStore,
     IWriter writer) : IFeedChecker
 {
+    private readonly int _maxConcurrency = options.Value.MaxConcurrency;
 
-    public async Task CheckAllFeedsAsync(List<WatcherSource> sources, CancellationToken ct)
+    public Task CheckAllFeedsAsync(IReadOnlyList<WatcherSource> sources, CancellationToken ct)
     {
-        foreach (var source in sources) {
-            try {
-                await CheckSourceAsync(source, ct);
-            } catch (Exception ex) when (!ct.IsCancellationRequested) {
-                logger.FetchFailed(source.Url!, ex);
-            }
-        }
+        // MaxConcurrency = 1 is the old sequential loop.
+        return Parallel.ForEachAsync(
+            sources,
+            new ParallelOptions { MaxDegreeOfParallelism = _maxConcurrency, CancellationToken = ct },
+            async (source, token) => {
+                try {
+                    await CheckSourceAsync(source, token);
+                } catch (Exception ex) when (!token.IsCancellationRequested) {
+                    // One failing source must not stop the others.
+                    logger.FetchFailed(source.Url!, ex);
+                }
+            });
     }
 
     private async Task CheckSourceAsync(WatcherSource source, CancellationToken ct)
@@ -46,10 +63,4 @@ public class FeedChecker(
 
         await seenStore.SetSeenAsync(url, currentIds, ct);
     }
-
-}
-
-public interface IFeedChecker
-{
-    Task CheckAllFeedsAsync(List<WatcherSource> sources, CancellationToken ct);
 }

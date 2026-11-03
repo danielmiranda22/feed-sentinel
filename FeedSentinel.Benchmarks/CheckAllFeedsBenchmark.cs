@@ -3,11 +3,13 @@ using BenchmarkDotNet.Engines;
 using FeedSentinel.Worker;
 using FeedSentinel.Worker.Config;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace FeedSentinel.Benchmarks;
 
 /// <summary>
 /// One full check over N sources, each answering after a simulated network latency.
+/// Compares checking sources one at a time (baseline) with checking them concurrently.
 /// </summary>
 [MemoryDiagnoser]
 // Each operation takes seconds: run it a few times instead of BenchmarkDotNet's
@@ -20,20 +22,20 @@ public class CheckAllFeedsBenchmark
     [Params(10, 50)]
     public int Sources;
 
-    private FeedChecker _checker = null!;
+    // Only used by Concurrent(); Sequential() always uses 1.
+    [Params(4, 8)]
+    public int MaxConcurrency;
+
+    private FeedChecker _sequential = null!;
+    private FeedChecker _concurrent = null!;
     private List<WatcherSource> _sources = null!;
 
     [GlobalSetup]
     public void Setup()
     {
-        var httpClient = new HttpClient(new FakeFeedHandler(Latency));
-
-        _checker = new FeedChecker(
-            NullLogger<FeedChecker>.Instance,
-            new FeedFetcher(httpClient),
-            new FeedParser(),
-            new NoOpSeenStore(),
-            new NoOpWriter());
+        // Same production code for both benchmarks: only MaxConcurrency changes.
+        _sequential = CreateChecker(maxConcurrency: 1);
+        _concurrent = CreateChecker(MaxConcurrency);
 
         _sources = Enumerable.Range(0, Sources)
             .Select(i => new WatcherSource {
@@ -43,6 +45,20 @@ public class CheckAllFeedsBenchmark
             .ToList();
     }
 
+    [Benchmark(Baseline = true)]
+    public Task Sequential() =>
+        _sequential.CheckAllFeedsAsync(_sources, CancellationToken.None);
+
     [Benchmark]
-    public Task CheckAllFeeds() => _checker.CheckAllFeedsAsync(_sources, CancellationToken.None);
+    public Task Concurrent() =>
+        _concurrent.CheckAllFeedsAsync(_sources, CancellationToken.None);
+
+    private static FeedChecker CreateChecker(int maxConcurrency) =>
+        new(
+            NullLogger<FeedChecker>.Instance,
+            Options.Create(new WatcherOptions { MaxConcurrency = maxConcurrency }),
+            new FeedFetcher(new HttpClient(new FakeFeedHandler(Latency))),
+            new FeedParser(),
+            new NoOpSeenStore(),
+            new NoOpWriter());
 }

@@ -5,11 +5,8 @@ using Microsoft.Extensions.Options;
 namespace FeedSentinel.Worker;
 
 /// <summary>
-/// Responsible to schedule and run the feed checking process at a configured interval.
+/// Runs a feed check at a fixed interval.
 /// </summary>
-/// <param name="logger"></param>
-/// <param name="options"></param>
-/// <param name="feedChecker"></param>
 public class Watcher(
     ILogger<Watcher> logger,
     IOptions<WatcherOptions> options,
@@ -24,8 +21,9 @@ public class Watcher(
         logger.SentinelStarted(_sources.Count, _interval);
 
         // Make every insecure opt-in visible in the logs.
-        foreach (var source in _sources.Where(s => s.Url!.Scheme == Uri.UriSchemeHttp))
+        foreach (var source in _sources.Where(s => s.Url!.Scheme == Uri.UriSchemeHttp)) {
             logger.InsecureSourceAllowed(source.Name, source.Url!);
+        }
 
         using var timer = new PeriodicTimer(_interval);
 

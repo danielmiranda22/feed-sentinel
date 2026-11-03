@@ -1,7 +1,8 @@
-﻿using System.Text.Json;
-using FeedSentinel.Worker.Config;
+﻿using FeedSentinel.Worker.Config;
 using FeedSentinel.Worker.Logging;
 using Microsoft.Extensions.Options;
+using System.Collections.Concurrent;
+using System.Text.Json;
 
 namespace FeedSentinel.Worker;
 
@@ -18,7 +19,7 @@ public interface ISeenStore
 
 /// <summary>
 /// Keeps the state in memory and persists it to a single JSON file.
-/// Not thread-safe: the watcher processes sources one at a time.
+/// Thread-safe: sources are checked concurrently.
 /// </summary>
 public sealed class JsonSeenStore : ISeenStore
 {
@@ -26,7 +27,10 @@ public sealed class JsonSeenStore : ISeenStore
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     private readonly string _path;
     // Key: source URL (stable even if the source is renamed). Value: entry ids.
-    private readonly Dictionary<string, HashSet<string>> _state;
+    private readonly ConcurrentDictionary<string, HashSet<string>> _state;
+
+    // Only one write to state.json at a time (they share the same .tmp file).
+    private readonly SemaphoreSlim _writeLock = new(1, 1);
 
     public JsonSeenStore(IOptions<WatcherOptions> options, ILogger<JsonSeenStore> logger)
     {
@@ -44,19 +48,25 @@ public sealed class JsonSeenStore : ISeenStore
 
     public async Task SetSeenAsync(Uri source, IReadOnlySet<string> ids, CancellationToken ct)
     {
+        // Replace the set, never change it: a reader holding the old set is not affected.
         _state[source.AbsoluteUri] = [.. ids];
 
-        // Atomic write: write a temp file, then replace the real one in a single step.
-        // A crash mid-write leaves the previous state.json intact.
-        var tempPath = _path + ".tmp";
-        await using (var stream = File.Create(tempPath)) {
-            await JsonSerializer.SerializeAsync(stream, _state, JsonOptions, ct);
-            stream.Flush(flushToDisk: true);
+        await _writeLock.WaitAsync(ct);
+        try {
+            // Atomic write: write a temp file, then replace the real one in a single step.
+            // A crash mid-write leaves the previous state.json intact.
+            var tempPath = _path + ".tmp";
+            await using (var stream = File.Create(tempPath)) {
+                await JsonSerializer.SerializeAsync(stream, _state, JsonOptions, ct);
+                stream.Flush(flushToDisk: true);
+            }
+            File.Move(tempPath, _path, overwrite: true);
+        } finally {
+            _writeLock.Release();
         }
-        File.Move(tempPath, _path, overwrite: true);
     }
 
-    private static Dictionary<string, HashSet<string>> Load(string path)
+    private static ConcurrentDictionary<string, HashSet<string>> Load(string path)
     {
         if (!File.Exists(path)) {
             return [];
@@ -64,7 +74,7 @@ public sealed class JsonSeenStore : ISeenStore
 
         try {
             using var stream = File.OpenRead(path);
-            return JsonSerializer.Deserialize<Dictionary<string, HashSet<string>>>(stream) ?? [];
+            return JsonSerializer.Deserialize<ConcurrentDictionary<string, HashSet<string>>>(stream) ?? [];
         } catch (JsonException ex) {
             // Fail fast: a corrupted state file is a real problem; don't hide it by starting over.
             throw new InvalidOperationException(
