@@ -1,3 +1,5 @@
+[![CI](https://github.com/danielmiranda22/feed-sentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/danielmiranda22/feed-sentinel/actions/workflows/ci.yml)
+
 # FeedSentinel
 
 A .NET 10 Worker Service that watches GitHub release feeds and answers one
