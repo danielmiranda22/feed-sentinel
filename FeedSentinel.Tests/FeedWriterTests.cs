@@ -26,13 +26,23 @@ public class FeedWriterTests : IDisposable
     // Second layer of the path traversal defence: names are validated at startup,
     // but the writer must refuse on its own as well.
     [Theory]
-    [InlineData("../escaped")]
-    [InlineData(@"..\escaped")]
-    [InlineData("C:/temp/rooted")]
+    [MemberData(nameof(NamesThatEscape))]
     public async Task Refuses_to_write_outside_the_output_folder(string name)
     {
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => CreateWriter().SaveDataAsync(Feed, name, CancellationToken.None));
+    }
+
+    // "../" and an absolute path escape on every OS. Backslashes and drive letters
+    // only mean something on Windows: on Linux they are plain file-name characters.
+    public static TheoryData<string> NamesThatEscape()
+    {
+        var names = new TheoryData<string> { "../escaped", "/tmp/rooted" };
+        if (OperatingSystem.IsWindows()) {
+            names.Add(@"..\escaped");
+            names.Add("C:/temp/rooted");
+        }
+        return names;
     }
 
     private FeedWriter CreateWriter() =>
