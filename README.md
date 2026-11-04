@@ -5,8 +5,6 @@
 A .NET 10 Worker Service that watches GitHub release feeds and answers one
 question: *did something I depend on ship a new version?*
 
-🚧 Work in progress...
-
 ## Run
 
 ```bash
