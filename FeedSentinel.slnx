@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/FeedSentinel/">
     <Project Path="FeedSentinel.Benchmarks/FeedSentinel.Benchmarks.csproj" Id="3f0cc58d-e626-414d-a9b7-c47cc7f02fd9" />
+    <Project Path="FeedSentinel.Tests/FeedSentinel.Tests.csproj" Id="af7d9ae5-11e1-4498-affc-1f742eb6836c" />
     <Project Path="FeedSentinel/FeedSentinel.Worker.csproj" />
   </Folder>
     
